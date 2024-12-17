@@ -1,22 +1,19 @@
 // Copyright 2024 Bewusstsein Labs
 
 use std::fmt::Debug;
-use std::ops::{ Deref, DerefMut, Mul, Div, AddAssign };
+use std::ops::{ Deref, DerefMut, Sub, Mul, Div, AddAssign };
 
 use kinematics::{
     Assert, IsTrue,
     constraint::Constraint,
     joint::Joint,
-    linkage::{
-        Linkage,
-        Linkage1D,
-        Linkage2D,
-        Linkage3D,
-        Linkage4D,
-    }
+    linkage::Linkage
 };
 
-use kinetics::force::Force;
+use kinetics::{
+    force::Force,
+    torque::Torque,
+};
 
 #[derive( Default, Debug )]
 pub struct DynLinkage<I, T, const DIM: usize, const ORD: usize>( Linkage<I, T, DIM, ORD> )
@@ -41,11 +38,71 @@ where
 
     pub fn apply_force( &mut self, id: I, force: Force<T, DIM>, time_step: T )
     where
-        Assert<{ ORD >= 1 }>: IsTrue,
-        T: 'static + Default + Copy + Debug + PartialEq + PartialOrd + Mul<Output = T> + Div<Output = T> + AddAssign
+        Assert<{ ORD >= 2 }>: IsTrue,
+        Assert<{ ORD >= 3 }>: IsTrue,
+        T: 'static + Default + Copy + Debug + PartialEq + PartialOrd + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + AddAssign
     {
         if let Some( joint ) = self.0.get_joint_mut( id ) {
             force.apply( joint, time_step );
+        }
+    }
+
+    pub fn apply_torque( &mut self, id: I, torque: Torque<T, DIM>, time_step: T )
+    where
+        Assert<{ ORD >= 2 }>: IsTrue,
+        Assert<{ ORD >= 3 }>: IsTrue,
+        T: 'static + Default + Copy + Debug + PartialEq + PartialOrd + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + AddAssign
+    {
+        if let Some( joint ) = self.0.get_joint_mut( id ) {
+            torque.apply( joint, time_step );
+        }
+    }
+}
+
+impl <I, T, const DIM: usize> DynLinkage<I, T, DIM, 1>
+where
+    I: 'static + Default + Copy + Debug + Ord,
+    T: 'static + Default + Copy + Debug + PartialEq,
+{
+    pub fn apply_force_1st_ord( &mut self, id: I, force: Force<T, DIM>, time_step: T )
+    where
+        T: 'static + Default + Copy + Debug + PartialEq + PartialOrd + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + AddAssign
+    {
+        if let Some( joint ) = self.0.get_joint_mut( id ) {
+            force.apply_1st_ord( joint, time_step );
+        }
+    }
+
+    pub fn apply_torque_1st_ord( &mut self, id: I, torque: Torque<T, DIM>, time_step: T )
+    where
+        T: 'static + Default + Copy + Debug + PartialEq + PartialOrd + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + AddAssign
+    {
+        if let Some( joint ) = self.0.get_joint_mut( id ) {
+            torque.apply_1st_ord( joint, time_step );
+        }
+    }
+}
+
+impl <I, T, const DIM: usize> DynLinkage<I, T, DIM, 2>
+where
+    I: 'static + Default + Copy + Debug + Ord,
+    T: 'static + Default + Copy + Debug + PartialEq,
+{
+    pub fn apply_force_2nd_ord( &mut self, id: I, force: Force<T, DIM> )
+    where
+        T: 'static + Default + Copy + Debug + PartialEq + PartialOrd + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + AddAssign
+    {
+        if let Some( joint ) = self.0.get_joint_mut( id ) {
+            force.apply_2nd_ord( joint );
+        }
+    }
+
+    pub fn apply_torque_2nd_ord( &mut self, id: I, torque: Torque<T, DIM> )
+    where
+        T: 'static + Default + Copy + Debug + PartialEq + PartialOrd + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + AddAssign
+    {
+        if let Some( joint ) = self.0.get_joint_mut( id ) {
+            torque.apply_2nd_ord( joint );
         }
     }
 }
@@ -93,6 +150,10 @@ mod tests {
         joint::Joint3D,
         constraint::{ Range, Constraint3D }
     };
+    use kinetics::{
+        force::Force3D,
+        torque::Torque3D,
+    };
 
     #[test]
     fn new_test() {
@@ -117,14 +178,18 @@ mod tests {
         ).unwrap();
         linkage.add_link( 0, 1, Link::default() ).unwrap();
         linkage.add_link( 1, 2, Link::default() ).unwrap();
+        dbg!( &linkage );
 
         loop {
             if let Some( node ) = linkage.get_joint( 0 ) {
                 println!( "Node 0:" );
-                println!( "Velocity {:?}", node.spatial_velocity() );
                 println!( "Position {:?}", node.position() );
+                println!( "Rotation {:?}", node.rotation() );
+                println!( "Spatial Velocity {:?}", node.spatial_velocity() );
+                println!( "Angular Velocity {:?}", node.angular_velocity() );
             }
-            linkage.apply_force( 0, Force::<f32, 3>::new( Vector3::<f32>::take([ 1.0, 2.0, 3.0 ]) ), 1.0 );
+            linkage.apply_force_1st_ord( 0, Force3D::new([ 1.0, 2.0, 3.0 ]), 1.0 );
+            linkage.apply_torque_1st_ord( 0, Torque3D::new([ 3.0, 2.0, 1.0 ]), 1.0 );
             linkage.update( 1.0 );
             linkage.constrain_joints();
             std::thread::sleep( std::time::Duration::from_secs_f32( 1.0 ) );
