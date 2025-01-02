@@ -3,8 +3,8 @@
 use std::fmt::Debug;
 use std::ops::{ Deref, DerefMut, Sub, Mul, Div, AddAssign };
 
+use const_expr_bounds::{ Assert, IsTrue };
 use kinematics::{
-    Assert, IsTrue,
     constraint::Constraint,
     joint::Joint,
     linkage::Linkage

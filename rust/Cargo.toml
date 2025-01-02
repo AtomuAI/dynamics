@@ -9,6 +9,7 @@ path = "src/lib.rs"
 [dependencies]
 thiserror = "2.0.4"
 num = "0.4.3"
+const-expr-bounds = { path = "../../const-expr-bounds/rust" }
 linear-algebra = { path = "../../linear-algebra/rust" }
 kinematics = { path = "../../kinematics/rust" }
 kinetics = { path = "../../kinetics/rust" }
